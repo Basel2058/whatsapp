@@ -2,139 +2,244 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WhatsApp Express</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open Chat</title>
+<meta name="description" content="Message any number on WhatsApp without saving it to your contacts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
-  /* Layout: one small centered column on plain white — title, number field, button. Single light theme by choice. */
+  /* Layout: one narrow centered column on white — mark, name, one-line description, number field, button; credit pinned low. Single light theme by choice. */
   :root {
     --bg: #ffffff;
-    --fg: #111111;
-    --muted: #8a8a8a;
-    --line: #e2e2e2;
-    --accent: #25d366;
-    --accent-hover: #1ebe5a;
+    --fg: #0f1a16;
+    --muted: #6b7772;
+    --faint: #a3ada9;
+    --line: #e3e8e6;
+    --green: #25d366;
+    --green-deep: #128c7e;
+    --green-press: #1fb859;
     --error: #d93025;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color-scheme: light;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
+    margin: 0;
     background: var(--bg);
     color: var(--fg);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     padding-block: 24px;
+    position: relative;
+    overflow-x: hidden;
   }
-  form { width: 100%; max-width: 360px; display: grid; gap: 14px; }
-  h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 10px; text-align: center; }
-  .row {
+
+  /* Soft green light in two corners to break the white */
+  .glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .glow::before, .glow::after {
+    content: ""; position: absolute; border-radius: 50%; filter: blur(80px);
+  }
+  .glow::before { width: 440px; height: 440px; top: -200px; right: -160px; background: rgba(37, 211, 102, .20); }
+  .glow::after  { width: 380px; height: 380px; bottom: -200px; left: -160px; background: rgba(18, 140, 126, .13); }
+
+  main {
+    position: relative; z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: 380px;
     display: flex;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    overflow: hidden;
+    flex-direction: column;
+    justify-content: center;
   }
-  .row:focus-within { border-color: var(--accent); }
-  select, input {
-    font: inherit;
-    font-size: 1.1rem;
-    color: var(--fg);
+  .head { text-align: center; margin-bottom: 28px; }
+  .mark {
+    width: 60px; height: 60px; margin: 0 auto 18px;
+    border-radius: 18px;
+    background: linear-gradient(140deg, var(--green) 0%, var(--green-deep) 100%);
+    display: grid; place-items: center;
+    box-shadow: 0 12px 28px -12px rgba(18, 140, 126, .7), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .mark svg { width: 30px; height: 30px; }
+  h1 {
+    font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em;
+    margin: 0 0 6px; line-height: 1.15;
+  }
+  .lede { margin: 0; color: var(--muted); font-size: .98rem; line-height: 1.5; text-wrap: balance; }
+
+  form { display: grid; gap: 12px; }
+  .field {
+    display: flex; align-items: stretch;
     background: var(--bg);
-    border: 0;
-    outline: none;
-    padding: 14px;
-    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 26, 22, .04), 0 8px 24px -16px rgba(15, 26, 22, .18);
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
-  select { border-right: 1px solid var(--line); cursor: pointer; max-width: 40%; }
-  input { flex: 1; font-variant-numeric: tabular-nums; }
+  .field:focus-within {
+    border-color: var(--green);
+    box-shadow: 0 0 0 4px rgba(37, 211, 102, .15);
+  }
+  .field.invalid { border-color: var(--error); box-shadow: 0 0 0 4px rgba(217, 48, 37, .10); }
+  .cc { position: relative; display: flex; border-right: 1px solid var(--line); }
+  .cc select {
+    appearance: none; -webkit-appearance: none;
+    font: inherit; font-size: 1.05rem; font-weight: 600; color: var(--fg);
+    background: transparent; border: 0; outline: none; cursor: pointer;
+    padding: 0 30px 0 16px; height: 54px;
+  }
+  .cc::after {
+    content: ""; position: absolute; right: 13px; top: 50%;
+    width: 7px; height: 7px; margin-top: -5px;
+    border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted);
+    transform: rotate(45deg); pointer-events: none;
+  }
+  .field input {
+    flex: 1; min-width: 0;
+    font: inherit; font-size: 1.1rem; font-weight: 500; letter-spacing: .01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg); background: transparent; border: 0; outline: none;
+    padding: 0 16px; height: 54px;
+  }
+  .field input::placeholder { color: var(--faint); font-weight: 400; }
+
+  .error { margin: -2px 0 0; color: var(--error); font-size: .88rem; text-align: center; }
+
   .btn {
-    display: block;
-    text-align: center;
-    text-decoration: none;
-    font: inherit;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #ffffff;
-    background: var(--accent);
-    border: 0;
-    border-radius: 12px;
-    padding: 15px;
-    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 54px;
+    font: inherit; font-size: 1.05rem; font-weight: 600; letter-spacing: .005em;
+    color: #ffffff; text-decoration: none;
+    background: var(--green);
+    border-radius: 14px;
+    box-shadow: 0 10px 22px -12px rgba(37, 211, 102, .9);
+    transition: background .15s ease, transform .1s ease;
+    -webkit-tap-highlight-color: transparent;
   }
-  .btn:hover { background: var(--accent-hover); }
-  .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
-  .error { color: var(--error); font-size: .9rem; margin: 0; text-align: center; }
+  .btn:hover { background: var(--green-press); }
+  .btn:active { transform: scale(.985); }
+  .btn:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 3px; }
+  .btn svg { width: 18px; height: 18px; transition: transform .15s ease; }
+  .btn:hover svg { transform: translateX(2px); }
+
+  .note { margin: 14px 0 0; text-align: center; color: var(--faint); font-size: .8rem; }
+
+  footer { position: relative; z-index: 1; padding-top: 24px; font-size: .78rem; color: var(--faint); letter-spacing: .02em; }
+  footer strong { color: var(--muted); font-weight: 600; }
+
+  @media (max-height: 560px) { .mark { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .btn, .btn svg, .field { transition: none; } }
 </style>
 </head>
 <body>
 
-<form id="form" novalidate>
-  <h1>WhatsApp Express</h1>
-  <div class="row">
-    <select id="country" aria-label="Country code"></select>
-    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-123-4567" aria-label="Phone number" autofocus>
+<div class="glow" aria-hidden="true"></div>
+
+<main>
+  <div class="head">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.3A8.5 8.5 0 1 1 20.5 11.5z"/>
+        <path d="M9 10.2h6M9 13.6h3.6"/>
+      </svg>
+    </div>
+    <h1>Open Chat</h1>
+    <p class="lede">Message any number on WhatsApp without saving it to your contacts.</p>
   </div>
-  <p class="error" id="error" role="alert" hidden></p>
-  <a class="btn" id="go" href="https://wa.me/" target="_blank" rel="noopener noreferrer">Open chat</a>
-</form>
+
+  <form id="form" novalidate>
+    <div class="field" id="field">
+      <label class="cc">
+        <select id="country" aria-label="Country code"></select>
+      </label>
+      <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-123-4567" aria-label="Phone number" aria-describedby="error">
+    </div>
+    <p class="error" id="error" role="alert" hidden></p>
+    <a class="btn" id="go" href="https://wa.me/" target="_blank" rel="noopener noreferrer">
+      Start chat
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <button type="submit" hidden></button>
+  </form>
+  <p class="note">Opens in the WhatsApp app or WhatsApp Web.</p>
+</main>
+
+<footer>Built by <strong>T.B.Technologies Inc.</strong></footer>
 
 <script>
   const COUNTRIES = [
     ["Israel", "972"], ["Palestine", "970"], ["Jordan", "962"], ["Egypt", "20"],
     ["Saudi Arabia", "966"], ["United Arab Emirates", "971"], ["Turkey", "90"],
-    ["United States", "1"], ["United Kingdom", "44"], ["Germany", "49"], ["France", "33"],
-    ["Russia", "7"], ["Ukraine", "380"], ["India", "91"], ["Canada", "1"], ["Australia", "61"]
+    ["United States / Canada", "1"], ["United Kingdom", "44"], ["Germany", "49"],
+    ["France", "33"], ["Russia", "7"], ["Ukraine", "380"], ["India", "91"], ["Australia", "61"]
   ];
   const country = document.getElementById("country");
   const phone = document.getElementById("phone");
+  const field = document.getElementById("field");
   const error = document.getElementById("error");
   const go = document.getElementById("go");
 
   COUNTRIES.forEach(([name, code], i) => {
     const opt = new Option(`+${code}`, String(i));
     opt.title = name;
+    opt.setAttribute("aria-label", `${name} +${code}`);
     country.add(opt);
   });
   country.value = "0"; // Israel
 
-  function buildNumber() {
-    const raw = phone.value.trim();
-    let digits;
-    if (raw.startsWith("+") || raw.startsWith("00")) {
-      digits = raw.replace(/\D/g, "").replace(/^00/, "");
-    } else {
-      digits = COUNTRIES[country.value][1] + raw.replace(/\D/g, "").replace(/^0+/, "");
-    }
-    return digits.length >= 9 && digits.length <= 15 ? digits : null;
+  // Turns what the person typed into a wa.me number (country code + number, digits only), or null.
+  function toWaNumber(raw, code) {
+    raw = raw.trim();
+    if (!raw) return null;
+    const digits = raw.replace(/\D/g, "");
+    let full;
+    if (raw.startsWith("+")) full = digits;                    // +972 50 123 4567
+    else if (digits.startsWith("00")) full = digits.slice(2);  // 00972501234567
+    else if (digits.startsWith(code) && digits.length - code.length >= 8) full = digits; // 972501234567
+    else full = code + digits.replace(/^0+/, "");              // 050-123-4567
+    return full.length >= 9 && full.length <= 15 ? full : null;
+  }
+
+  const current = () => toWaNumber(phone.value, COUNTRIES[country.value][1]);
+
+  function setError(msg) {
+    error.textContent = msg;
+    error.hidden = !msg;
+    field.classList.toggle("invalid", !!msg);
+    phone.setAttribute("aria-invalid", msg ? "true" : "false");
   }
 
   function update() {
-    const number = buildNumber();
-    go.href = number ? `https://wa.me/${number}` : "https://wa.me/";
-    error.hidden = true;
+    const n = current();
+    go.href = n ? `https://wa.me/${n}` : "https://wa.me/";
+    if (!error.hidden) setError("");
   }
   phone.addEventListener("input", update);
   country.addEventListener("change", update);
 
   go.addEventListener("click", (e) => {
-    const number = phone.value.trim() ? buildNumber() : null;
-    if (!number) {
-      error.textContent = phone.value.trim() ? "Check the number and try again." : "Enter a phone number.";
-      error.hidden = false;
-      phone.focus();
+    const n = current();
+    if (!n) {
       e.preventDefault();
+      setError(phone.value.trim() ? "That number doesn't look right. Check the digits." : "Enter a phone number first.");
+      phone.focus();
       return;
     }
-    go.href = `https://wa.me/${number}`;
+    go.href = `https://wa.me/${n}`;
   });
 
   document.getElementById("form").addEventListener("submit", (e) => {
     e.preventDefault();
     go.click();
   });
+
+  update();
 </script>
 </body>
 </html>
