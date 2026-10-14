@@ -1,291 +1,140 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WhatsApp Express</title>
-  <meta name="description" content="Message any WhatsApp number without saving it to your contacts.">
-  <meta name="theme-color" content="#075e54">
-  <style>
-    :root {
-      --bg: #eef3f1;
-      --card: #ffffff;
-      --text: #1d2b27;
-      --muted: #5f6f6a;
-      --border: #d5dfdb;
-      --brand: #25d366;
-      --brand-dark: #128c7e;
-      --header: #075e54;
-      --error: #c0392b;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0b141a;
-        --card: #111b21;
-        --text: #e9edef;
-        --muted: #8696a0;
-        --border: #2a3942;
-        --header: #1f2c33;
-        --error: #ef6f61;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      background: var(--header);
-      color: #fff;
-      padding: 28px 16px 72px;
-      text-align: center;
-    }
-    header h1 { margin: 0 0 6px; font-size: 1.8rem; }
-    header p { margin: 0; opacity: .85; }
-    main {
-      width: 100%;
-      max-width: 480px;
-      margin: -48px auto 32px;
-      padding: 0 16px;
-      flex: 1;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 24px;
-      box-shadow: 0 6px 24px rgba(0,0,0,.08);
-    }
-    label { display: block; font-weight: 600; margin: 0 0 6px; font-size: .95rem; }
-    .row { display: flex; gap: 8px; margin-bottom: 18px; }
-    select, input, textarea {
-      font: inherit;
-      color: var(--text);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      width: 100%;
-      min-width: 0;
-    }
-    select { width: 42%; }
-    textarea { resize: vertical; min-height: 96px; margin-bottom: 18px; }
-    select:focus, input:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
-    .error { color: var(--error); font-size: .9rem; margin: -10px 0 14px; min-height: 1.2em; }
-    .actions { display: flex; flex-direction: column; gap: 10px; }
-    button {
-      font: inherit;
-      font-weight: 600;
-      border: 0;
-      border-radius: 10px;
-      padding: 14px;
-      cursor: pointer;
-    }
-    .primary { background: var(--brand); color: #053b1f; }
-    .primary:hover { filter: brightness(.95); }
-    .secondary { background: transparent; color: var(--brand-dark); border: 1px solid var(--border); }
-    @media (prefers-color-scheme: dark) { .secondary { color: var(--brand); } }
-    .preview { font-size: .85rem; color: var(--muted); word-break: break-all; margin-top: 14px; }
-    h2 { font-size: 1rem; margin: 28px 0 10px; }
-    #recent { list-style: none; margin: 0; padding: 0; }
-    #recent li {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; padding: 10px 0; border-top: 1px solid var(--border);
-    }
-    #recent a { color: var(--text); text-decoration: none; font-variant-numeric: tabular-nums; }
-    #recent a:hover { color: var(--brand-dark); }
-    #recent button { padding: 4px 10px; background: transparent; color: var(--muted); font-weight: 400; }
-    .empty { color: var(--muted); font-size: .9rem; }
-    .how { color: var(--muted); font-size: .9rem; line-height: 1.5; }
-    .how ol { padding-left: 20px; }
-    footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 16px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Express</title>
+<style>
+  /* Layout: one small centered column on plain white — title, number field, button. Single light theme by choice. */
+  :root {
+    --bg: #ffffff;
+    --fg: #111111;
+    --muted: #8a8a8a;
+    --line: #e2e2e2;
+    --accent: #25d366;
+    --accent-hover: #1ebe5a;
+    --error: #d93025;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+  }
+  form { width: 100%; max-width: 360px; display: grid; gap: 14px; }
+  h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 10px; text-align: center; }
+  .row {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .row:focus-within { border-color: var(--accent); }
+  select, input {
+    font: inherit;
+    font-size: 1.1rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 0;
+    outline: none;
+    padding: 14px;
+    min-width: 0;
+  }
+  select { border-right: 1px solid var(--line); cursor: pointer; max-width: 40%; }
+  input { flex: 1; font-variant-numeric: tabular-nums; }
+  .btn {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    font: inherit;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--accent);
+    border: 0;
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .error { color: var(--error); font-size: .9rem; margin: 0; text-align: center; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>WhatsApp Express</h1>
-    <p>Message any number on WhatsApp without saving it to your contacts.</p>
-  </header>
 
-  <main>
-    <form class="card" id="form" novalidate>
-      <label for="phone">Phone number</label>
-      <div class="row">
-        <select id="country" aria-label="Country code"></select>
-        <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 501234567" required>
-      </div>
-      <div class="error" id="error" role="alert"></div>
+<form id="form" novalidate>
+  <h1>WhatsApp Express</h1>
+  <div class="row">
+    <select id="country" aria-label="Country code"></select>
+    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-123-4567" aria-label="Phone number" autofocus>
+  </div>
+  <p class="error" id="error" role="alert" hidden></p>
+  <a class="btn" id="go" href="https://wa.me/" target="_blank" rel="noopener noreferrer">Open chat</a>
+</form>
 
-      <label for="message">Message <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-      <textarea id="message" placeholder="Type a message to pre-fill…"></textarea>
+<script>
+  const COUNTRIES = [
+    ["Israel", "972"], ["Palestine", "970"], ["Jordan", "962"], ["Egypt", "20"],
+    ["Saudi Arabia", "966"], ["United Arab Emirates", "971"], ["Turkey", "90"],
+    ["United States", "1"], ["United Kingdom", "44"], ["Germany", "49"], ["France", "33"],
+    ["Russia", "7"], ["Ukraine", "380"], ["India", "91"], ["Canada", "1"], ["Australia", "61"]
+  ];
+  const country = document.getElementById("country");
+  const phone = document.getElementById("phone");
+  const error = document.getElementById("error");
+  const go = document.getElementById("go");
 
-      <div class="actions">
-        <button class="primary" type="submit">Open chat in WhatsApp</button>
-        <button class="secondary" type="button" id="copy">Copy link</button>
-      </div>
-      <div class="preview" id="preview"></div>
+  COUNTRIES.forEach(([name, code], i) => {
+    const opt = new Option(`+${code}`, String(i));
+    opt.title = name;
+    country.add(opt);
+  });
+  country.value = "0"; // Israel
 
-      <h2>Recent numbers</h2>
-      <ul id="recent"></ul>
-    </form>
-
-    <section class="how">
-      <h2>How it works</h2>
-      <ol>
-        <li>Pick the country code and type the number (leading zeros are removed automatically).</li>
-        <li>Optionally write a message.</li>
-        <li>Tap <strong>Open chat</strong> — WhatsApp opens straight into a conversation with that number.</li>
-      </ol>
-      <p>Everything runs in your browser. Recent numbers are only stored on this device.</p>
-    </section>
-  </main>
-
-  <footer>Uses WhatsApp's official click-to-chat links (wa.me). Not affiliated with WhatsApp.</footer>
-
-  <script>
-    const COUNTRIES = [
-      ["Afghanistan", "93"], ["Algeria", "213"], ["Argentina", "54"], ["Australia", "61"],
-      ["Austria", "43"], ["Bahrain", "973"], ["Bangladesh", "880"], ["Belgium", "32"],
-      ["Brazil", "55"], ["Canada", "1"], ["China", "86"], ["Colombia", "57"],
-      ["Denmark", "45"], ["Egypt", "20"], ["Ethiopia", "251"], ["Finland", "358"],
-      ["France", "33"], ["Germany", "49"], ["Ghana", "233"], ["Greece", "30"],
-      ["Hong Kong", "852"], ["India", "91"], ["Indonesia", "62"], ["Iran", "98"],
-      ["Iraq", "964"], ["Ireland", "353"], ["Israel", "972"], ["Italy", "39"],
-      ["Japan", "81"], ["Jordan", "962"], ["Kenya", "254"], ["Kuwait", "965"],
-      ["Lebanon", "961"], ["Libya", "218"], ["Malaysia", "60"], ["Mexico", "52"],
-      ["Morocco", "212"], ["Nepal", "977"], ["Netherlands", "31"], ["New Zealand", "64"],
-      ["Nigeria", "234"], ["Norway", "47"], ["Oman", "968"], ["Pakistan", "92"],
-      ["Palestine", "970"], ["Philippines", "63"], ["Poland", "48"], ["Portugal", "351"],
-      ["Qatar", "974"], ["Romania", "40"], ["Russia", "7"], ["Saudi Arabia", "966"],
-      ["Singapore", "65"], ["South Africa", "27"], ["South Korea", "82"], ["Spain", "34"],
-      ["Sri Lanka", "94"], ["Sudan", "249"], ["Sweden", "46"], ["Switzerland", "41"],
-      ["Syria", "963"], ["Thailand", "66"], ["Tunisia", "216"], ["Turkey", "90"],
-      ["Uganda", "256"], ["Ukraine", "380"], ["United Arab Emirates", "971"],
-      ["United Kingdom", "44"], ["United States", "1"], ["Vietnam", "84"], ["Yemen", "967"]
-    ];
-    const STORE_KEY = "wa-express";
-    const $ = (id) => document.getElementById(id);
-    const country = $("country"), phone = $("phone"), message = $("message");
-    const error = $("error"), preview = $("preview"), recentList = $("recent");
-
-    function load() {
-      try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+  function buildNumber() {
+    const raw = phone.value.trim();
+    let digits;
+    if (raw.startsWith("+") || raw.startsWith("00")) {
+      digits = raw.replace(/\D/g, "").replace(/^00/, "");
+    } else {
+      digits = COUNTRIES[country.value][1] + raw.replace(/\D/g, "").replace(/^0+/, "");
     }
-    function save(data) {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
-    }
-    const state = Object.assign({ country: "", recent: [] }, load());
+    return digits.length >= 9 && digits.length <= 15 ? digits : null;
+  }
 
-    COUNTRIES.forEach(([name, code], i) => {
-      const opt = new Option(`+${code} ${name}`, String(i));
-      country.add(opt);
-    });
-    const savedIndex = COUNTRIES.findIndex(([n, c]) => `${n}|${c}` === state.country);
-    country.value = String(savedIndex >= 0 ? savedIndex : COUNTRIES.findIndex(([n]) => n === "United States"));
+  function update() {
+    const number = buildNumber();
+    go.href = number ? `https://wa.me/${number}` : "https://wa.me/";
+    error.hidden = true;
+  }
+  phone.addEventListener("input", update);
+  country.addEventListener("change", update);
 
-    // Returns digits-only international number, or null if invalid.
-    function buildNumber() {
-      let raw = phone.value.trim();
-      if (!raw) return null;
-      let digits;
-      if (raw.startsWith("+") || raw.startsWith("00")) {
-        // Full international number typed; ignore the selector.
-        digits = raw.replace(/\D/g, "").replace(/^00/, "");
-      } else {
-        const code = COUNTRIES[country.value][1];
-        digits = code + raw.replace(/\D/g, "").replace(/^0+/, "");
-      }
-      return digits.length >= 8 && digits.length <= 15 ? digits : null;
-    }
-
-    function buildLink(number) {
-      const text = message.value.trim();
-      return `https://wa.me/${number}` + (text ? `?text=${encodeURIComponent(text)}` : "");
-    }
-
-    function update() {
-      const number = buildNumber();
-      preview.textContent = number ? buildLink(number) : "";
-      if (number) error.textContent = "";
-    }
-
-    function validate() {
-      const number = buildNumber();
-      if (!number) {
-        error.textContent = phone.value.trim()
-          ? "That doesn't look like a valid phone number."
-          : "Please enter a phone number.";
-        phone.focus();
-      }
-      return number;
-    }
-
-    function remember(number) {
-      state.recent = [number, ...state.recent.filter((n) => n !== number)].slice(0, 8);
-      const [n, c] = COUNTRIES[country.value];
-      state.country = `${n}|${c}`;
-      save(state);
-      renderRecent();
-    }
-
-    function renderRecent() {
-      recentList.replaceChildren();
-      if (!state.recent.length) {
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = "No recent numbers yet.";
-        recentList.append(li);
-        return;
-      }
-      state.recent.forEach((number) => {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = `https://wa.me/${number}`;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.textContent = `+${number}`;
-        const del = document.createElement("button");
-        del.type = "button";
-        del.setAttribute("aria-label", `Remove +${number}`);
-        del.textContent = "✕";
-        del.onclick = () => {
-          state.recent = state.recent.filter((n) => n !== number);
-          save(state);
-          renderRecent();
-        };
-        li.append(a, del);
-        recentList.append(li);
-      });
-    }
-
-    $("form").addEventListener("submit", (e) => {
+  go.addEventListener("click", (e) => {
+    const number = phone.value.trim() ? buildNumber() : null;
+    if (!number) {
+      error.textContent = phone.value.trim() ? "Check the number and try again." : "Enter a phone number.";
+      error.hidden = false;
+      phone.focus();
       e.preventDefault();
-      const number = validate();
-      if (!number) return;
-      remember(number);
-      window.open(buildLink(number), "_blank", "noopener");
-    });
+      return;
+    }
+    go.href = `https://wa.me/${number}`;
+  });
 
-    $("copy").addEventListener("click", async () => {
-      const number = validate();
-      if (!number) return;
-      const btn = $("copy");
-      try {
-        await navigator.clipboard.writeText(buildLink(number));
-        btn.textContent = "Copied!";
-      } catch {
-        btn.textContent = "Copy failed";
-      }
-      setTimeout(() => (btn.textContent = "Copy link"), 1500);
-    });
-
-    [country, phone, message].forEach((el) => el.addEventListener("input", update));
-    renderRecent();
-  </script>
+  document.getElementById("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    go.click();
+  });
+</script>
 </body>
 </html>
