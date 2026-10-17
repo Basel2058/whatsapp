@@ -31,7 +31,9 @@ The bridge reads only unread mail and marks each one read as it handles it.
 ### 2. WhatsApp Cloud API
 1. At [business.facebook.com](https://business.facebook.com) create (or use) your Meta Business account.
 2. At [developers.facebook.com](https://developers.facebook.com/apps) create an app of type **Business** and add the **WhatsApp** product.
-3. Under **WhatsApp → API Setup** add your business phone number (it must not be in use on the regular WhatsApp app) and copy its **Phone number ID** → `WA_PHONE_NUMBER_ID`.
+3. Connect your business phone number and copy its **Phone number ID** → `WA_PHONE_NUMBER_ID`. Either:
+   - **Keep using it in the WhatsApp Business app on the phone ("coexistence"):** connect it through Meta's embedded signup with the "WhatsApp Business App" option and scan the QR code from the app. Messages the bridge sends then also show up in the app. Open the app at least every ~2 weeks or the link drops.
+   - **Dedicated API number:** add it under **WhatsApp → API Setup** and verify by SMS. It can't be used in any WhatsApp app after that.
 4. In Business Settings → **System users**, create a system user, give it the app and the WhatsApp account, and generate a **permanent token** with `whatsapp_business_messaging` and `whatsapp_business_management` → `WA_TOKEN`.
 5. Add a payment method to the WhatsApp account (template messages are billed per message by Meta).
 
