@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WhatsApp Connect</title>
+<meta name="description" content="Connect a WhatsApp Business app number to the Cloud API (coexistence) with Meta Embedded Signup.">
+<meta name="robots" content="noindex">
+<style>
+  /* One narrow column: two ID fields, a connect button, and a results box filled by Meta's signup flow. */
+  :root {
+    --bg: #ffffff;
+    --fg: #0f1a16;
+    --muted: #6b7772;
+    --line: #e3e8e6;
+    --green: #25d366;
+    --green-deep: #128c7e;
+    --error: #d93025;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Tahoma, Arial, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 440px; display: grid; gap: 16px; }
+  h1 { margin: 0; font-size: 1.5rem; }
+  p { margin: 0; color: var(--muted); line-height: 1.6; }
+  label { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+  input {
+    font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+    direction: ltr; text-align: left;
+  }
+  input:focus { outline: 2px solid var(--green); border-color: transparent; }
+  button {
+    font: inherit; font-weight: 700; padding: 14px; border: 0; border-radius: 12px;
+    background: var(--green-deep); color: #fff; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { min-height: 1.5em; }
+  #status.error { color: var(--error); }
+  #result {
+    display: none; border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+    direction: ltr; text-align: left; white-space: pre-wrap; word-break: break-all;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>ربط WhatsApp Business بالـ API</h1>
+  <p>يربط رقم تطبيق WhatsApp Business الموجود على هاتفك بالـ Cloud API عن طريق رمز QR، ويبقى الرقم يعمل في الهاتف.</p>
+
+  <label>App ID
+    <input id="app" inputmode="numeric" autocomplete="off" placeholder="1234567890">
+  </label>
+  <label>Configuration ID
+    <input id="config" inputmode="numeric" autocomplete="off" placeholder="9876543210">
+  </label>
+
+  <button id="connect" type="button">ربط الرقم</button>
+  <div id="status" role="status"></div>
+  <div id="result"></div>
+</main>
+
+<script>
+  const GRAPH_VERSION = "v23.0";
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  $("app").value = params.get("app") || "";
+  $("config").value = params.get("config") || "";
+
+  function status(text, isError) {
+    $("status").textContent = text;
+    $("status").className = isError ? "error" : "";
+  }
+
+  // Load the Facebook SDK once, initialised with the app id typed in.
+  let sdkReady = null;
+  function loadSdk(appId) {
+    if (sdkReady) return sdkReady;
+    sdkReady = new Promise((resolve, reject) => {
+      window.fbAsyncInit = () => {
+        FB.init({ appId, autoLogAppEvents: true, xfbml: false, version: GRAPH_VERSION });
+        resolve();
+      };
+      const s = document.createElement("script");
+      s.src = "https://connect.facebook.net/en_US/sdk.js";
+      s.async = true;
+      s.crossOrigin = "anonymous";
+      s.onerror = () => { sdkReady = null; reject(new Error("sdk")); };
+      document.head.appendChild(s);
+    });
+    return sdkReady;
+  }
+
+  // Meta posts the IDs of the connected account back to this page.
+  window.addEventListener("message", (event) => {
+    if (!/(^|\.)facebook\.com$/.test(new URL(event.origin).hostname)) return;
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
+    if (data.type !== "WA_EMBEDDED_SIGNUP") return;
+
+    if (String(data.event).startsWith("FINISH")) {
+      const d = data.data || {};
+      status("تم الربط ✅ انسخ هذه المعلومات وضعها في ملف .env");
+      $("result").style.display = "block";
+      $("result").textContent =
+        "WA_PHONE_NUMBER_ID=" + (d.phone_number_id || "(not returned, see WhatsApp Manager > Phone numbers)") +
+        "\nWABA ID: " + (d.waba_id || "-") +
+        "\nBusiness ID: " + (d.business_id || "-");
+    } else if (data.event === "CANCEL") {
+      status("تم الإلغاء" + (data.data && data.data.current_step ? " عند الخطوة: " + data.data.current_step : ""), true);
+    } else if (data.event === "ERROR") {
+      status("خطأ من Meta: " + ((data.data && data.data.error_message) || "غير معروف"), true);
+    }
+  });
+
+  $("connect").addEventListener("click", async () => {
+    const appId = $("app").value.trim();
+    const configId = $("config").value.trim();
+    if (!appId || !configId) { status("أدخل App ID و Configuration ID", true); return; }
+
+    $("connect").disabled = true;
+    status("جارٍ فتح نافذة Meta…");
+    try {
+      await loadSdk(appId);
+    } catch {
+      status("لم يتم تحميل Facebook SDK. أوقف حاجب الإعلانات (Ghostery) لهذه الصفحة وأعد المحاولة.", true);
+      $("connect").disabled = false;
+      return;
+    }
+    FB.login(() => { $("connect").disabled = false; }, {
+      config_id: configId,
+      response_type: "code",
+      override_default_response_type: true,
+      extras: {
+        setup: {},
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3",
+      },
+    });
+  });
+</script>
+</body>
+</html>

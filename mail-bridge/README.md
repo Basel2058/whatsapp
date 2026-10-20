@@ -32,10 +32,21 @@ The bridge reads only unread mail and marks each one read as it handles it.
 1. At [business.facebook.com](https://business.facebook.com) create (or use) your Meta Business account.
 2. At [developers.facebook.com](https://developers.facebook.com/apps) create an app of type **Business** and add the **WhatsApp** product.
 3. Connect your business phone number and copy its **Phone number ID** → `WA_PHONE_NUMBER_ID`. Either:
-   - **Keep using it in the WhatsApp Business app on the phone ("coexistence"):** connect it through Meta's embedded signup with the "WhatsApp Business App" option and scan the QR code from the app. Messages the bridge sends then also show up in the app. Open the app at least every ~2 weeks or the link drops.
+   - **Keep using it in the WhatsApp Business app on the phone ("coexistence"):** the developer dashboard's "Add phone number" only offers SMS, so connect it with Meta's Embedded Signup instead, either through a partner (BSP) or for free from your own app with [`signup.html`](../signup.html) (see below). Messages the bridge sends then also show up in the app. Open the app at least every ~2 weeks or the link drops.
    - **Dedicated API number:** add it under **WhatsApp → API Setup** and verify by SMS. It can't be used in any WhatsApp app after that.
 4. In Business Settings → **System users**, create a system user, give it the app and the WhatsApp account, and generate a **permanent token** with `whatsapp_business_messaging` and `whatsapp_business_management` → `WA_TOKEN`.
 5. Add a payment method to the WhatsApp account (template messages are billed per message by Meta).
+
+#### Coexistence without a partner (`signup.html`)
+1. In the app dashboard, under **Join partners**, join as a **Tech Provider**.
+2. Add the **Facebook Login for Business** product → **Configurations** → create one with the
+   **WhatsApp Embedded Signup** login variation. Copy its **Configuration ID**.
+3. **Facebook Login for Business → Settings:** turn on *Login with the JavaScript SDK* and add the page's
+   site (e.g. `https://basel2058.github.io/`) to *Allowed domains for the JavaScript SDK*.
+4. Open `signup.html` on that site, enter the **App ID** and **Configuration ID**, press the button, choose
+   to connect your existing WhatsApp Business app, and scan the QR code from the app on the phone.
+5. The page shows the `WA_PHONE_NUMBER_ID`. Give your system user access to the new WhatsApp account
+   (Business Settings → System users → Assign assets) so its token can send from that number.
 
 ### 3. Message template
 WhatsApp only lets a business start a conversation with an approved template.
