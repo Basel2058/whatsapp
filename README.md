@@ -7,4 +7,4 @@ A single static `index.html` with no build step. Built by T.B.Technologies Inc.
 
 ## Mail → WhatsApp bridge
 
-Need to send WhatsApp messages from a program that can only send email? See [`mail-bridge/`](mail-bridge/README.md).
+Need to send WhatsApp messages from a program that can only send email? Run the bridge for free on Google Apps Script with [`apps-script/`](apps-script/README.md), or on your own server with [`mail-bridge/`](mail-bridge/README.md).
