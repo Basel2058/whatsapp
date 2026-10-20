@@ -72,6 +72,16 @@ Optional: to also send emails *without* an attachment, create a second template 
 
 Wait for the templates to show **Active** before going live.
 
+### Quick test (WhatsApp only, no email)
+Before setting up the mailbox, check the WhatsApp side from any computer with Python 3:
+```bash
+pip install requests
+cp .env.example .env      # fill in at least WA_TOKEN, WA_PHONE_NUMBER_ID, WA_DOC_TEMPLATE, WA_TEMPLATE_LANG
+python bridge.py send 0501234567 invoice.pdf Invoice 1042
+```
+With Meta's **test number** (WhatsApp → API Setup), use its Phone number ID and temporary access token, add the
+phone you send to under *To* first, and create the template in the test WhatsApp account.
+
 ### 4. Run it on the server
 ```bash
 cp .env.example .env      # fill in the values

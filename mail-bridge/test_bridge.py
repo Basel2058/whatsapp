@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 import json
+import os
+import tempfile
 import threading
 import unittest
 from email.message import EmailMessage
@@ -292,6 +294,31 @@ class WebhookServerTests(unittest.TestCase):
             self.assertEqual(signed.status_code, 200)
             self.assertTrue(done.wait(5))
             self.assertEqual(send.call_count, 1)
+
+
+class SendCommandTests(unittest.TestCase):
+    def test_send_needs_only_whatsapp_settings(self):
+        env = {"WA_TOKEN": "t", "WA_PHONE_NUMBER_ID": "123", "WA_DOC_TEMPLATE": "document_send"}
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(bridge.WhatsApp, "send_document", return_value="wamid.T") as send, \
+                mock.patch("builtins.print") as out:
+            path = os.path.join(d, "invoice.pdf")
+            with open(path, "wb") as f:
+                f.write(b"%PDF")
+            bridge.send_test(["050-123-4567", path, "Invoice", "1042"])
+
+        to, att, caption = send.call_args.args
+        self.assertEqual((to, att.filename, att.mime_type, att.data, caption),
+                         ("972501234567", "invoice.pdf", "application/pdf", b"%PDF", "Invoice 1042"))
+        self.assertIn("wamid.T", out.call_args.args[0])
+
+    def test_env_file(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"KEEP": "env"}, clear=True):
+            path = os.path.join(d, ".env")
+            with open(path, "w") as f:
+                f.write("# comment\nWA_TOKEN='abc'\nKEEP=file\nEMPTY=\n")
+            bridge.load_env_file(path)
+            self.assertEqual((os.environ["WA_TOKEN"], os.environ["KEEP"], os.environ["EMPTY"]), ("abc", "env", ""))
 
 
 if __name__ == "__main__":

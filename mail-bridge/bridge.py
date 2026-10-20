@@ -79,7 +79,8 @@ class Config:
         return bool(self.wa_verify_token)
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, mail=True):
+        """mail=False skips the mailbox settings, for the `send` test command."""
         env = os.environ
 
         def need(name):
@@ -88,21 +89,24 @@ class Config:
                 sys.exit(f"Missing required setting: {name}")
             return value
 
+        def need_mail(name):
+            return need(name) if mail else env.get(name, "").strip()
+
         senders = tuple(
             s.strip().lower() for s in env.get("ALLOWED_SENDERS", "").split(",") if s.strip()
         )
-        if not senders:
+        if mail and not senders:
             sys.exit("ALLOWED_SENDERS must list at least one address (or domain like @company.com)")
 
-        if env.get("WA_VERIFY_TOKEN", "").strip():
+        if mail and env.get("WA_VERIFY_TOKEN", "").strip():
             need("WA_APP_SECRET")
             need("FORWARD_TO")
             need("SMTP_HOST")
 
         return cls(
-            imap_host=need("IMAP_HOST"),
-            imap_user=need("IMAP_USER"),
-            imap_password=need("IMAP_PASSWORD"),
+            imap_host=need_mail("IMAP_HOST"),
+            imap_user=need_mail("IMAP_USER"),
+            imap_password=need_mail("IMAP_PASSWORD"),
             imap_port=int(env.get("IMAP_PORT", 993)),
             imap_folder=env.get("IMAP_FOLDER", "INBOX"),
             poll_seconds=int(env.get("POLL_SECONDS", 30)),
@@ -117,8 +121,8 @@ class Config:
             wa_template_params=int(env.get("WA_TEMPLATE_PARAMS", 1)),
             smtp_host=env.get("SMTP_HOST", ""),
             smtp_port=int(env.get("SMTP_PORT", 587)),
-            smtp_user=env.get("SMTP_USER") or env["IMAP_USER"],
-            smtp_password=env.get("SMTP_PASSWORD") or env["IMAP_PASSWORD"],
+            smtp_user=env.get("SMTP_USER") or env.get("IMAP_USER", ""),
+            smtp_password=env.get("SMTP_PASSWORD") or env.get("IMAP_PASSWORD", ""),
             notify_sender=env.get("NOTIFY_SENDER", "errors").lower(),
             forward_to=env.get("FORWARD_TO", "").strip(),
             wa_verify_token=env.get("WA_VERIFY_TOKEN", "").strip(),
@@ -511,8 +515,43 @@ def start_webhook_server(cfg, wa):
     return server
 
 
+# --------------------------------------------------------------------------- entry points
+
+def load_env_file(path=".env"):
+    """Read KEY=VALUE lines from .env so running by hand needs no `export`s."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        key, sep, value = line.partition("=")
+        key = key.strip()
+        if sep and key and not key.startswith("#"):
+            os.environ.setdefault(key, value.strip().strip('"').strip("'"))
+
+
+def send_test(args):
+    """python bridge.py send 0501234567 invoice.pdf Invoice 1042  ->  WhatsApp only, no email."""
+    if len(args) < 2:
+        sys.exit("Usage: python bridge.py send PHONE FILE [TEXT FOR {{1}}]")
+    cfg = Config.from_env(mail=False)
+    path = args[1]
+    try:
+        to = normalize_phone(args[0], cfg.default_country_code)
+        with open(path, "rb") as f:
+            att = Attachment(os.path.basename(path), mimetypes.guess_type(path)[0] or "application/octet-stream", f.read())
+        wamid = WhatsApp(cfg).send_document(to, att, " ".join(args[2:]))
+    except (BridgeError, OSError) as e:
+        sys.exit(f"Not sent: {e}")
+    print(f"Sent {att.filename} to +{to} (message id {wamid})")
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    load_env_file()
+    if sys.argv[1:2] == ["send"]:
+        return send_test(sys.argv[2:])
     cfg = Config.from_env()
     wa = WhatsApp(cfg)
     if cfg.webhook_enabled:
