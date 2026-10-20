@@ -32,12 +32,18 @@ The bridge reads only unread mail and marks each one read as it handles it.
 1. At [business.facebook.com](https://business.facebook.com) create (or use) your Meta Business account.
 2. At [developers.facebook.com](https://developers.facebook.com/apps) create an app of type **Business** and add the **WhatsApp** product.
 3. Connect your business phone number and copy its **Phone number ID** → `WA_PHONE_NUMBER_ID`. Either:
-   - **Keep using it in the WhatsApp Business app on the phone ("coexistence"):** the developer dashboard's "Add phone number" only offers SMS, so connect it with Meta's Embedded Signup instead, either through a partner (BSP) or for free from your own app with [`signup.html`](../signup.html) (see below). Messages the bridge sends then also show up in the app. Open the app at least every ~2 weeks or the link drops.
-   - **Dedicated API number:** add it under **WhatsApp → API Setup** and verify by SMS. It can't be used in any WhatsApp app after that.
+   - **Dedicated API number (simplest, free):** if the number is active in a WhatsApp app, delete the account there first
+     (WhatsApp Business → Settings → Account → Delete my account) and wait a few minutes. Then add it under
+     **WhatsApp → API Setup → Add phone number** and verify by SMS. It can't be used in any WhatsApp app after that;
+     turn on [customer replies](#customer-replies-optional) so answers reach you by email.
+   - **Keep using it in the WhatsApp Business app on the phone ("coexistence"):** the developer dashboard's "Add phone number" only offers SMS, so connect it with Meta's Embedded Signup instead, either through a partner (BSP, monthly fee) or for free from your own app with [`signup.html`](../signup.html) (see below). Messages the bridge sends then also show up in the app. Open the app at least every ~2 weeks or the link drops.
 4. In Business Settings → **System users**, create a system user, give it the app and the WhatsApp account, and generate a **permanent token** with `whatsapp_business_messaging` and `whatsapp_business_management` → `WA_TOKEN`.
 5. Add a payment method to the WhatsApp account (template messages are billed per message by Meta).
 
 #### Coexistence without a partner (`signup.html`)
+Meta only lets an app run Embedded Signup after it qualifies as a Tech Provider (business verification and
+app review), even for your own number. Until then the flow stops at "can't onboard customers right now".
+
 1. In the app dashboard, under **Join partners**, join as a **Tech Provider**.
 2. Add the **Facebook Login for Business** product → **Configurations** → create one with the
    **WhatsApp Embedded Signup** login variation. Copy its **Configuration ID**.
@@ -69,9 +75,9 @@ Wait for the templates to show **Active** before going live.
 ### 4. Run it on the server
 ```bash
 cp .env.example .env      # fill in the values
-docker build -t mail-bridge .
-docker run -d --name mail-bridge --restart unless-stopped --env-file .env mail-bridge
-docker logs -f mail-bridge
+docker compose up -d --build          # bridge + HTTPS for customer replies
+# or, without customer replies:  docker compose up -d --build bridge
+docker compose logs -f bridge
 ```
 
 Without Docker:
@@ -81,8 +87,27 @@ set -a; . ./.env; set +a
 python bridge.py
 ```
 
+## Customer replies (optional)
+A number used only through the API isn't in any phone app, so customer replies would go unseen.
+With this turned on, the bridge emails you:
+- every message a customer sends to the number, with any file or photo attached;
+- every message WhatsApp could not deliver (e.g. the number has no WhatsApp), sent back to whoever emailed it.
+
+Setup:
+1. In `.env` set `FORWARD_TO` (where replies go), `SMTP_HOST`, a random `WA_VERIFY_TOKEN`,
+   `WA_APP_SECRET` (App dashboard → App settings → Basic) and `DOMAIN`. Without a domain, use the server's
+   IP with dashes plus `.sslip.io`, e.g. `203-0-113-5.sslip.io` for `203.0.113.5`.
+2. Open ports 80 and 443 on the server and start with `docker compose up -d --build`.
+   `https://DOMAIN/health` should show `ok`.
+3. App dashboard → **WhatsApp → Configuration → Webhook**: Callback URL `https://DOMAIN/webhook`,
+   Verify token = `WA_VERIFY_TOKEN`, then **Verify and save**. Under *Webhook fields*, subscribe to **messages**.
+4. Meta only sends real messages to apps in **Live** mode: App settings → Basic, set the Privacy Policy URL to
+   `https://basel2058.github.io/whatsapp/privacy.html`, then switch the app to **Live** (Publish).
+
+Replying: email a file to the bridge with the customer's number in the subject, as usual.
+
 ## Notes
-- "Sent" means WhatsApp accepted the message. If the number has no WhatsApp, Meta reports that
-  later via webhooks, which this bridge doesn't listen to; check **WhatsApp Manager → Insights** if a customer says they got nothing.
+- "Sent" means WhatsApp accepted the message. Without customer replies turned on, a failed delivery
+  (e.g. the number has no WhatsApp) isn't reported; check **WhatsApp Manager → Insights** if a customer says they got nothing.
 - Attachments up to 100 MB are accepted by WhatsApp.
 - Tests: `python -m unittest`

@@ -1,0 +1,5 @@
+# Gives the webhook a public HTTPS address (Meta only calls HTTPS).
+# Certificates come from Let's Encrypt automatically.
+{$DOMAIN} {
+	reverse_proxy bridge:8080
+}

@@ -25,7 +25,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp index.html signup.html _site/
+          cp index.html signup.html privacy.html _site/
           [ -f CNAME ] && cp CNAME _site/ || true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

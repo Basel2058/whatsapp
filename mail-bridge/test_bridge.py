@@ -1,6 +1,12 @@
+import hashlib
+import hmac
+import json
+import threading
 import unittest
 from email.message import EmailMessage
 from unittest import mock
+
+import requests
 
 import bridge
 from bridge import BridgeError, Config
@@ -188,6 +194,104 @@ class MailboxTests(unittest.TestCase):
         wa.send_document.assert_called_once()
         to, att, caption = wa.send_document.call_args.args
         self.assertEqual((to, att.filename, caption), ("972501234567", "a.pdf", "Invoice"))
+
+
+def webhook_payload(messages=(), statuses=(), contacts=()):
+    value = {"messaging_product": "whatsapp", "contacts": list(contacts),
+             "messages": list(messages), "statuses": list(statuses)}
+    return {"object": "whatsapp_business_account",
+            "entry": [{"id": "WABA", "changes": [{"field": "messages", "value": value}]}]}
+
+
+class IncomingTests(unittest.TestCase):
+    def setUp(self):
+        self.cfg = make_cfg(forward_to="office@company.com", wa_verify_token="vt",
+                            wa_app_secret="secret", smtp_host="smtp.example.com")
+        patcher = mock.patch("bridge.send_email")
+        self.send_email = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_text_reply_is_emailed(self):
+        payload = webhook_payload(
+            messages=[{"from": "972501234567", "id": "wamid.in", "type": "text", "text": {"body": "Thanks!\nGot it"}}],
+            contacts=[{"wa_id": "972501234567", "profile": {"name": "Dana"}}],
+        )
+        bridge.handle_webhook(payload, self.cfg, mock.Mock())
+        to, subject, body, attachments = self.send_email.call_args.args[1:]
+        self.assertEqual(to, "office@company.com")
+        self.assertEqual(subject, "WhatsApp from +972501234567 (Dana): Thanks! Got it")
+        self.assertIn("Thanks!\nGot it", body)
+        self.assertEqual(attachments, [])
+
+    def test_document_reply_is_downloaded_and_attached(self):
+        wa = mock.Mock()
+        wa.download.return_value = bridge.Attachment("signed.pdf", "application/pdf", b"%PDF")
+        payload = webhook_payload(messages=[{
+            "from": "972501234567", "id": "wamid.in", "type": "document",
+            "document": {"id": "MEDIA9", "filename": "signed.pdf", "mime_type": "application/pdf"},
+        }])
+        bridge.handle_webhook(payload, self.cfg, wa)
+        wa.download.assert_called_once_with("MEDIA9", "signed.pdf")
+        attachments = self.send_email.call_args.args[4]
+        self.assertEqual([a.filename for a in attachments], ["signed.pdf"])
+
+    def test_failed_delivery_goes_back_to_original_sender(self):
+        bridge.remember("wamid.out", make_mail("0501234567 Invoice 7"))
+        payload = webhook_payload(statuses=[{
+            "id": "wamid.out", "status": "failed", "recipient_id": "972501234567",
+            "errors": [{"code": 131026, "title": "Message undeliverable"}],
+        }])
+        bridge.handle_webhook(payload, self.cfg, mock.Mock())
+        to, subject, body = self.send_email.call_args.args[1:4]
+        self.assertEqual(to, "terminal@company.com")
+        self.assertEqual(subject, "WhatsApp NOT delivered: 0501234567 Invoice 7")
+        self.assertIn("no WhatsApp", body)
+
+    def test_delivered_status_is_ignored(self):
+        payload = webhook_payload(statuses=[{"id": "x", "status": "delivered", "recipient_id": "1"}])
+        bridge.handle_webhook(payload, self.cfg, mock.Mock())
+        self.send_email.assert_not_called()
+
+    def test_download(self):
+        session = mock.Mock()
+        session.headers = {}
+        session.get.side_effect = [
+            FakeResponse({"url": "https://lookaside.example/m", "mime_type": "image/jpeg"}),
+            mock.Mock(ok=True, content=b"JPEG"),
+        ]
+        att = bridge.WhatsApp(self.cfg, session).download("MEDIA1")
+        self.assertEqual((att.filename, att.mime_type, att.data), ("MEDIA1.jpg", "image/jpeg", b"JPEG"))
+        self.assertEqual(session.get.call_args_list[0].args[0], "https://graph.facebook.com/v23.0/MEDIA1")
+
+
+class WebhookServerTests(unittest.TestCase):
+    def setUp(self):
+        self.cfg = make_cfg(forward_to="office@company.com", wa_verify_token="vt",
+                            wa_app_secret="secret", smtp_host="smtp.example.com", webhook_port=0)
+        self.server = bridge.start_webhook_server(self.cfg, mock.Mock())
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}/webhook"
+
+    def test_verification_handshake(self):
+        ok = requests.get(self.url, params={"hub.mode": "subscribe", "hub.verify_token": "vt", "hub.challenge": "42"})
+        self.assertEqual((ok.status_code, ok.text), (200, "42"))
+        bad = requests.get(self.url, params={"hub.mode": "subscribe", "hub.verify_token": "no", "hub.challenge": "42"})
+        self.assertEqual(bad.status_code, 403)
+
+    def test_signed_post_is_processed_and_unsigned_rejected(self):
+        body = json.dumps(webhook_payload(
+            messages=[{"from": "972501234567", "id": "w", "type": "text", "text": {"body": "hi"}}])).encode()
+        done = threading.Event()
+        with mock.patch("bridge.send_email", side_effect=lambda *a, **k: done.set()) as send:
+            unsigned = requests.post(self.url, data=body, headers={"X-Hub-Signature-256": "sha256=bad"})
+            self.assertEqual(unsigned.status_code, 403)
+
+            sig = "sha256=" + hmac.new(b"secret", body, hashlib.sha256).hexdigest()
+            signed = requests.post(self.url, data=body, headers={"X-Hub-Signature-256": sig})
+            self.assertEqual(signed.status_code, 200)
+            self.assertTrue(done.wait(5))
+            self.assertEqual(send.call_count, 1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+services:
+  bridge:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+
+  # HTTPS in front of the webhook. Not needed if WA_VERIFY_TOKEN is empty.
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:
