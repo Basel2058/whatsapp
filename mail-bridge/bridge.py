@@ -115,7 +115,8 @@ class Config:
             wa_token=need("WA_TOKEN"),
             wa_phone_number_id=need("WA_PHONE_NUMBER_ID"),
             wa_api_version=env.get("WA_API_VERSION", "v23.0"),
-            wa_doc_template=need("WA_DOC_TEMPLATE"),
+            # Empty: plain documents, which only reach people who wrote in the last 24h.
+            wa_doc_template=env.get("WA_DOC_TEMPLATE", "").strip(),
             wa_text_template=env.get("WA_TEXT_TEMPLATE", ""),
             wa_template_lang=env.get("WA_TEMPLATE_LANG", "he"),
             wa_template_params=int(env.get("WA_TEMPLATE_PARAMS", 1)),
@@ -246,6 +247,11 @@ class WhatsApp:
 
     def send_document(self, to, att, caption):
         media_id = self.upload(att)
+        if not self.cfg.wa_doc_template:
+            return self._send({
+                "messaging_product": "whatsapp", "to": to, "type": "document",
+                "document": {"id": media_id, "filename": att.filename, "caption": caption or att.filename},
+            })
         return self._send(build_template_message(
             to, self.cfg.wa_doc_template, self.cfg.wa_template_lang,
             params=[caption or att.filename][: self.cfg.wa_template_params],

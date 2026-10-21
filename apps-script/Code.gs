@@ -28,7 +28,9 @@ function config_() {
   return {
     token: need('WA_TOKEN'),
     phoneNumberId: need('WA_PHONE_NUMBER_ID'),
-    docTemplate: need('WA_DOC_TEMPLATE'),
+    // Empty: send files as plain documents, which only reach people who messaged
+    // the number in the last 24 hours (free, no template; handy for testing).
+    docTemplate: (p.WA_DOC_TEMPLATE || '').trim(),
     apiVersion: (p.WA_API_VERSION || 'v23.0').trim(),
     textTemplate: (p.WA_TEXT_TEMPLATE || '').trim(),
     lang: (p.WA_TEMPLATE_LANG || 'he').trim(),
@@ -136,6 +138,12 @@ function sendMessage_(c, message) {
 
 function sendDocument_(c, to, blob, caption) {
   const mediaId = upload_(c, blob);
+  if (!c.docTemplate) {
+    return sendMessage_(c, {
+      messaging_product: 'whatsapp', to, type: 'document',
+      document: { id: mediaId, filename: blob.getName(), caption: caption || blob.getName() },
+    });
+  }
   const params = [caption || blob.getName()].slice(0, c.templateParams);
   return sendMessage_(c, buildTemplateMessage_(to, c.docTemplate, c.lang, params,
     { id: mediaId, filename: blob.getName() }));

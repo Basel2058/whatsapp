@@ -133,6 +133,13 @@ class HandleTests(unittest.TestCase):
         sent = self.session.post.call_args_list[1].kwargs["json"]
         self.assertEqual([c["type"] for c in sent["template"]["components"]], ["header"])
 
+    def test_plain_document_without_template(self):
+        cfg = make_cfg(wa_doc_template="")
+        bridge.handle(make_mail("0501234567 Invoice 9", [("a.pdf", b"1")]), cfg, bridge.WhatsApp(cfg, self.session))
+        sent = self.session.post.call_args.kwargs["json"]
+        self.assertEqual(sent["type"], "document")
+        self.assertEqual(sent["document"], {"id": "MEDIA1", "filename": "a.pdf", "caption": "Invoice 9"})
+
     def test_no_attachment_without_text_template(self):
         cfg = make_cfg()
         with self.assertRaises(BridgeError):

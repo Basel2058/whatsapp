@@ -105,6 +105,15 @@ test('each attachment is uploaded and sent with the template', () => {
   assert.equal(sent.length, 0); // success isn't reported unless NOTIFY_SENDER=all
 });
 
+test('without a template, files go as plain documents', () => {
+  const m = mail('0501234567 Invoice 9', { attachments: [blob('a.pdf', 'application/pdf')] });
+  const { ctx, fetched } = load({ mails: [m], props: { WA_DOC_TEMPLATE: '' } });
+  ctx.processMailbox();
+  const message = JSON.parse(fetched[1].options.payload);
+  assert.equal(message.type, 'document');
+  assert.deepEqual(message.document, { id: 'MEDIA1', filename: 'a.pdf', caption: 'Invoice 9' });
+});
+
 test('problems are emailed back and unlisted senders ignored', () => {
   const noFile = mail('0501234567 Invoice 1');
   const badSubject = mail('Invoice 2', { attachments: [blob('a.pdf', 'application/pdf')] });

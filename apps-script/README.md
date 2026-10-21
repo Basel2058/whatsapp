@@ -22,7 +22,7 @@ e.g. `0501234567 Invoice 1042`. Problems are emailed back to the sender.
    |---|---|
    | `WA_TOKEN` | access token (temporary from API Setup for testing; permanent system-user token for real use) |
    | `WA_PHONE_NUMBER_ID` | Phone number ID from WhatsApp → API Setup |
-   | `WA_DOC_TEMPLATE` | `document_send` |
+   | `WA_DOC_TEMPLATE` | `document_send`. Leave it out to send plain documents, which only reach people who messaged the number in the last 24 hours (free, no template; good for testing) |
    | `WA_TEMPLATE_LANG` | `ar`, `he`, `en_US`… the template's language |
    | `ALLOWED_SENDERS` | the terminal's address, or `@company.com` for a whole domain |
    | `TEST_PHONE` | your own number, for `testSend` |
